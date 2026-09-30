@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+/*
+ * Roopaank design tokens, taken from public/raapaank.png.
+ * Every text/background pair below is at least 4.5:1 (WCAG AA):
+ *   ink on white 16.18, ink on blush 14.23, muted on white 7.63, muted on blush-deep 5.91,
+ *   primary on white 9.08, primary on blush 7.99, white on primary 9.08,
+ *   eyebrow on white 7.32, eyebrow on blush-deep 5.67, success on white 5.35.
+ */
+@theme {
+  --color-primary: #8a1c3c;
+  --color-primary-hover: #6f1530;
+  --color-primary-deep: #7a1733;
+
+  --color-blush: #fdedea;
+  --color-blush-deep: #f9dcd8;
+  --color-page: #fff8f6;
+  --color-surface: #ffffff;
+  --color-line: #ecdcd8;
+
+  --color-ink: #2b1d1f;
+  --color-muted: #5e5054;
+  --color-eyebrow: #7a4b2a;
+  --color-success: #1e7a46;
+  --color-star: #e8a317;
+
+  --font-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+
+  img {
+    display: block;
+    max-width: 100%;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
