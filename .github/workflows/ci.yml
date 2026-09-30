@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint-and-build:
-    name: Lint and Build
+  lint-test-build:
+    name: Lint, Test and Build
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -39,10 +39,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # No "test" script exists in client/package.json yet.
-      # When one is added, insert here:
-      # - name: Test
-      #   run: npm test
+      - name: Test
+        run: npm test
+
+      - name: Coverage (fails below 80% threshold)
+        run: npm run test:coverage
 
       - name: Build
         run: npm run build
