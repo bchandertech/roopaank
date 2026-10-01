@@ -51,7 +51,7 @@ Things that need more than one file to understand:
 ## Workflow and CI
 
 - `.github/workflows/ci.yml` runs lint, tests, coverage and build for **`client/` only**, on every push. Nothing in CI covers `server/` yet.
-- The intended branch flow, from `.github/workflows/docs/ARCHITECTURE.md`, is `feature/*` → `dev` → `staging` → `main`. Each step needs a PR and CI, merging to `dev` deploys to staging, and `main` deploys to production on Vercel.
+- The intended branch flow, from `.github/workflows/docs/ARCHITECTURE.md`, is `feature/*` → `dev` → `main`. Each step needs a PR, review and CI, and QA testing happens on `dev` before the `dev` → `main` PR. Nothing deploys until a PR is merged into `main` and CI passes; the `deploy` job in `ci.yml` then deploys to Vercel production. Vercel's own Git auto-deploy must stay disabled.
 
 ## Rules
 

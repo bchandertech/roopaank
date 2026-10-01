@@ -5,6 +5,7 @@ on:
   pull_request:
     branches:
       - main
+      - dev
 
 permissions:
   contents: read
@@ -47,3 +48,43 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # Production deploy. Runs only after CI passes on a push to main, i.e. after
+  # a PR (dev -> main) is merged. Vercel's own Git auto-deploy must be turned
+  # off for this project, otherwise Vercel deploys on every push by itself.
+  deploy:
+    name: Deploy to Vercel (production)
+    needs: lint-test-build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: client
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Pull Vercel project settings
+        run: npx vercel@latest pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build
+        run: npx vercel@latest build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy
+        run: npx vercel@latest deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
