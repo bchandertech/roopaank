@@ -182,14 +182,30 @@ Any other transition returns `409 INVALID_STATUS_TRANSITION`.
 | Local dev | Docker Compose: Postgres + API + web | — |
 | Source control | Git + GitHub, PR-based workflow | — |
 | CI | GitHub Actions: format check, lint, typecheck, test, build | + Docker image build/push to ECR |
-| Hosting | — | EC2 (first), then ECS Fargate + ALB |
-| Database | Local Postgres in Docker | RDS PostgreSQL |
+| Hosting | Web: Vercel (free). API: Render web service (free). See §4.4 | EC2 (first), then ECS Fargate + ALB |
+| Database | Local Postgres in Docker; Neon Postgres (free) for staging and production | RDS PostgreSQL |
 | Images | Local disk in dev | S3 + CloudFront |
 | Infra as code | — | Terraform |
-| Secrets | `.env` (git-ignored), `.env.example` committed | SSM Parameter Store / Secrets Manager |
-| Logs/alerts | Console (structured JSON via pino) | CloudWatch |
+| Secrets | `.env` (git-ignored), `.env.example` committed; hosted envs set them in the Vercel/Render dashboards | SSM Parameter Store / Secrets Manager |
+| Logs/alerts | Console (structured JSON via pino); Render log viewer when hosted | CloudWatch |
 
-**[OPEN]** Image storage before AWS exists: local disk is fine for development; production images require S3 (or Cloudinary free tier as a fallback).
+**[OPEN]** Image storage before AWS exists: local disk is fine for development; production images require S3 (or Cloudinary free tier as a fallback). Render's free disk is wiped on every deploy and restart, so uploaded images will not survive there.
+
+### 4.4 Hosting before AWS **[DECISION]** (ROO-2, 2026-10-09)
+
+Owner decision: free plans only, no paid services and no custom domain. Hosted environments are for testing, not for real customers. Applies to sprints S1–S9; AWS replaces it in S10 (§12, D10).
+
+| Part | Host | Notes |
+|---|---|---|
+| Web (`apps/web`, static Vite build) | Vercel, free plan | One project per environment (staging, production). |
+| API (`apps/api`, Express) | Render web service, free plan | One service per environment. Sleeps after ~15 min idle; the first request after that is slow (cold start). |
+| Database | Neon Postgres, free plan | Separate databases for staging and production; never shared. |
+
+**Same-site cookies without a domain:** the browser calls the API only through the web app's own origin (`<web>.vercel.app/api/*`). A Vercel rewrite forwards `/api/*` to the Render service. The browser sees one site, so the `SameSite=Lax` session cookie works (§9). `WEB_ORIGIN` on the API is the Vercel URL. Razorpay webhooks may call the Render URL directly, because they use signature verification, not cookies.
+
+**To verify in ROO-14 (not decided here):** how the rewrite target is set per environment; the correct `TRUST_PROXY` hop count behind Vercel + Render (rate limiting by IP depends on it); that `Set-Cookie` and `Origin` pass through the rewrite unchanged.
+
+**Recorded shortcut (CLAUDE.md):** free plans with cold starts, `*.vercel.app` URLs and no uptime guarantee are not fit for real customers. Before accepting real orders or live Razorpay keys, move to a custom domain and a non-sleeping API plan, or to AWS (S10).
 
 ---
 
@@ -260,8 +276,8 @@ Each folder has a README describing what belongs there.
 | Env | Purpose | Data |
 |---|---|---|
 | `local` | Development | Seeded fake data |
-| `staging` | Pre-release testing on AWS (later) | Seeded test data, Razorpay test keys |
-| `production` | Real customers (later) | Real data, Razorpay live keys |
+| `staging` | Pre-release testing. Deployed from `dev` to Vercel + Render + Neon (§4.4); AWS in S10 | Seeded test data, Razorpay test keys |
+| `production` | Deployed from `main` to Vercel + Render + Neon (§4.4). Real customers only after the §4.4 shortcut is resolved | Own database; Razorpay test keys until go-live, live keys only after that |
 
 Config is read from environment variables and validated at startup with Zod; the API refuses to start if config is invalid.
 
@@ -441,7 +457,7 @@ Mobile-first (mobile, tablet, desktop). Semantic HTML, keyboard navigation, visi
 
 **Known limitations (recorded per CLAUDE.md):**
 - Rate-limit counters are in process memory: correct for one API instance only. Running several instances needs a shared store (e.g. Redis).
-- `SameSite=Lax` session cookies are only sent if the web app and API are on the **same site** (e.g. `roopaank.in` + `api.roopaank.in`). Hosting them on unrelated domains (e.g. `*.vercel.app` + `*.onrender.com`) would break login — ROO-2 must pick hosting/domains with this in mind.
+- `SameSite=Lax` session cookies are only sent if the web app and API are on the **same site** (e.g. `roopaank.in` + `api.roopaank.in`). Hosting them on unrelated domains (e.g. `*.vercel.app` + `*.onrender.com`) would break login. ROO-2 solved this with a Vercel `/api/*` rewrite (§4.4).
 - `npm audit` reports high-severity advisories in Prisma CLI dev tooling (`mysql2`, `deepmerge-ts`). They are not in the API's runtime path (we use PostgreSQL); revisit when Prisma ships a fixed release.
 
 ---
@@ -510,3 +526,4 @@ Mobile-first (mobile, tablet, desktop). Semantic HTML, keyboard navigation, visi
 | D11 | Images: local disk in dev, S3 + CloudFront in production | ✅ Confirmed by owner (2026-10-09) |
 | D12 | Client state: Redux Toolkit (replaces Zustand). Server state: React Query (TanStack Query) | ✅ Confirmed by owner (2026-10-09) |
 | D13 | Testing: Jest + React Testing Library + Supertest (replaces Vitest); Playwright for E2E | ✅ Confirmed by owner (2026-10-09) |
+| D14 | Hosting before AWS: Vercel (web) + Render (API) + Neon (Postgres), free plans, no custom domain, API reached via a Vercel `/api/*` rewrite (§4.4) | ✅ Confirmed by owner (2026-10-09) |
