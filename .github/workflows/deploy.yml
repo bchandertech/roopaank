@@ -1,11 +1,11 @@
-# CD: deploys a branch after it has merged (SPRINTS ROO-14). Runbook: docs/runbooks/deploy.md.
-# dev → staging. Order: CI on the merge commit → DB migrations → API (Render) → web (Vercel).
+# CD: deploys a branch after it has merged (SPRINTS ROO-14, ROO-15). Runbooks: docs/runbooks/.
+# dev → staging, main → production. Order: CI on the merge commit → DB migrations → API (Render) → web (Vercel).
 # Render and Vercel auto-deploys are off, so nothing reaches an environment without passing CI.
 name: Deploy
 
 on:
   push:
-    branches: [dev]
+    branches: [dev, main]
 
 # One deploy per environment at a time. Never cancel a deploy halfway; queue the next one.
 concurrency:
@@ -20,13 +20,14 @@ jobs:
     uses: ./.github/workflows/ci.yml
 
   deploy:
-    name: Deploy to staging
+    name: Deploy to ${{ github.ref_name == 'main' && 'production' || 'staging' }}
     needs: ci
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Settings and secrets for this environment: GitHub → Settings → Environments → staging.
+    # Settings and secrets per environment: GitHub → Settings → Environments.
+    # `production` requires an approval before this job starts (docs/runbooks/deploy.md).
     environment:
-      name: staging
+      name: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
       url: ${{ vars.WEB_URL }}
 
     env:

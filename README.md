@@ -45,5 +45,6 @@ npm run build      # build shared → api → web
 |---|---|---|---|
 | Local | any | `http://localhost:5173` (web), `http://localhost:4000` (API) | `npm run dev:web`, `npm run dev:api` |
 | Staging | `dev` | `https://roopaank-staging.vercel.app` (live after the first deploy) | Automatic on merge into `dev` |
+| Production | `main` | `https://roopaank.vercel.app` (live after the first deploy) | On merge into `main`, after manual approval |
 
-Hosting: Vercel (web) + Render (API) + Neon (Postgres), free plans (`docs/SPEC.md` §4.4). Setup, deploy flow and troubleshooting: [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md).
+Hosting: Vercel (web) + Render (API) + Neon (Postgres), free plans (`docs/SPEC.md` §4.4). Setup, deploy flow and troubleshooting: [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md). Rollback: [`docs/runbooks/rollback.md`](docs/runbooks/rollback.md).
