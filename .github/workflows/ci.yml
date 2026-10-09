@@ -3,6 +3,8 @@
 name: CI
 
 on:
+  # Lets deploy.yml re-run the same checks on the exact commit it is about to deploy.
+  workflow_call:
   push:
     branches: ['feature/**', 'fix/**', 'hotfix/**']
   pull_request:

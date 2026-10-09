@@ -203,7 +203,9 @@ Owner decision: free plans only, no paid services and no custom domain. Hosted e
 
 **Same-site cookies without a domain:** the browser calls the API only through the web app's own origin (`<web>.vercel.app/api/*`). A Vercel rewrite forwards `/api/*` to the Render service. The browser sees one site, so the `SameSite=Lax` session cookie works (§9). `WEB_ORIGIN` on the API is the Vercel URL. Razorpay webhooks may call the Render URL directly, because they use signature verification, not cookies.
 
-**To verify in ROO-14 (not decided here):** how the rewrite target is set per environment; the correct `TRUST_PROXY` hop count behind Vercel + Render (rate limiting by IP depends on it); that `Set-Cookie` and `Origin` pass through the rewrite unchanged.
+**To verify on the first staging deploy** (checklist in `docs/runbooks/deploy.md`): the correct `TRUST_PROXY` hop count behind Vercel + Render (rate limiting by IP depends on it); that `Set-Cookie` and `Origin` pass through the rewrite unchanged.
+
+**Rewrite target per environment:** `vercel.json` holds an `__API_ORIGIN__` placeholder; the deploy workflow replaces it with the environment's `API_ORIGIN` before building.
 
 **Recorded shortcut (CLAUDE.md):** free plans with cold starts, `*.vercel.app` URLs and no uptime guarantee are not fit for real customers. Before accepting real orders or live Razorpay keys, move to a custom domain and a non-sleeping API plan, or to AWS (S10).
 

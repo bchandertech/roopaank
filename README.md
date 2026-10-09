@@ -38,3 +38,12 @@ npm run typecheck  # type-check all workspaces
 npm test           # run all tests (API tests need the Docker database)
 npm run build      # build shared → api → web
 ```
+
+## Environments
+
+| Env | Branch | URL | Deploy |
+|---|---|---|---|
+| Local | any | `http://localhost:5173` (web), `http://localhost:4000` (API) | `npm run dev:web`, `npm run dev:api` |
+| Staging | `dev` | `https://roopaank-staging.vercel.app` (live after the first deploy) | Automatic on merge into `dev` |
+
+Hosting: Vercel (web) + Render (API) + Neon (Postgres), free plans (`docs/SPEC.md` §4.4). Setup, deploy flow and troubleshooting: [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md).
