@@ -45,3 +45,6 @@ apps/api/src/generated/
 
 # Locally stored uploads (product images in dev)
 apps/api/uploads/
+
+# Vercel CLI project link and pulled settings (CI only)
+.vercel

@@ -1,0 +1,115 @@
+# CD: deploys a branch after it has merged (SPRINTS ROO-14). Runbook: docs/runbooks/deploy.md.
+# dev → staging. Order: CI on the merge commit → DB migrations → API (Render) → web (Vercel).
+# Render and Vercel auto-deploys are off, so nothing reaches an environment without passing CI.
+name: Deploy
+
+on:
+  push:
+    branches: [dev]
+
+# One deploy per environment at a time. Never cancel a deploy halfway; queue the next one.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    name: Deploy to staging
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Settings and secrets for this environment: GitHub → Settings → Environments → staging.
+    environment:
+      name: staging
+      url: ${{ vars.WEB_URL }}
+
+    env:
+      API_ORIGIN: ${{ vars.API_ORIGIN }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+
+    steps:
+      # Fail early with a clear message instead of a half-done deploy.
+      - name: Check environment configuration
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          WEB_URL: ${{ vars.WEB_URL }}
+        run: |
+          missing=()
+          for name in API_ORIGIN WEB_URL VERCEL_ORG_ID VERCEL_PROJECT_ID DATABASE_URL RENDER_DEPLOY_HOOK_URL VERCEL_TOKEN; do
+            [ -n "${!name}" ] || missing+=("$name")
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing in the GitHub environment: ${missing[*]} (see docs/runbooks/deploy.md)"
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Runs before the new API starts, so migrations must stay compatible with the running
+      # API version (add columns/tables first, remove old ones in a later release).
+      - name: Apply database migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run db:deploy -w @roopaank/api
+
+      - name: Deploy API (Render)
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: curl --fail --silent --show-error --output /dev/null -X POST "$RENDER_DEPLOY_HOOK_URL"
+
+      # The API reports its commit in /api/health (APP_VERSION). Wait until this commit is live
+      # and healthy; free instances build slowly and cold-start, so allow up to 20 minutes.
+      - name: Wait for the new API version
+        run: |
+          for _ in $(seq 1 80); do
+            body=$(curl --silent --max-time 30 "$API_ORIGIN/api/health" || true)
+            if echo "$body" | grep -q "\"status\":\"ok\"" && echo "$body" | grep -q "$GITHUB_SHA"; then
+              echo "API is live at $GITHUB_SHA"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::API did not report version $GITHUB_SHA within 20 minutes. Check the Render deploy logs."
+          exit 1
+
+      - name: Point the /api rewrite at this environment's API
+        run: |
+          sed -i "s|__API_ORIGIN__|$API_ORIGIN|" vercel.json
+          if grep -q "__API_ORIGIN__" vercel.json; then
+            echo "::error::vercel.json still has the API placeholder"
+            exit 1
+          fi
+
+      - name: Deploy web (Vercel)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          npx --yes vercel@63 pull --yes --environment=production --token="$VERCEL_TOKEN"
+          npx --yes vercel@63 build --prod --token="$VERCEL_TOKEN"
+          npx --yes vercel@63 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+
+      - name: Smoke test through the web origin
+        run: |
+          curl --fail --silent --show-error --max-time 60 "$WEB_URL/" --output /dev/null
+          curl --fail --silent --show-error --max-time 60 "$WEB_URL/api/health"
+        env:
+          WEB_URL: ${{ vars.WEB_URL }}
