@@ -23,7 +23,7 @@
 | ROO-1 | docs | Resolve open decisions | 2 | D2–D11 in SPEC §13 marked Confirmed/changed. Shipping fee fixed. Redux vs Zustand chosen (✅ Redux Toolkit, 2026-10-09). Hosting chosen (see ROO-2). Spec and CLAUDE.md consistent. |
 | ROO-2 | spike | ⚠️ Choose staging/production hosting before AWS | 2 | Written decision in SPEC for web + API + DB hosting for S1–S9 (e.g. Vercel + Render/Railway + Neon, all free tier, no card). AWS stays S10. CLAUDE.md "Vercel" references updated to match. |
 | ROO-3 | tech | GitHub repo + branches | 2 | Repo created. `.gitignore` covers `.env*` (except `.env.example`). Initial commit on `main`. `dev` branch created. Branch protection or documented manual discipline (GitHub Free limits protection on private repos). |
-| ROO-4 | tech | Ticket tracking board | 1 | GitHub Issues + Projects board (or Jira) with columns Backlog / Sprint / In progress / In review / On staging / Done. All tickets in this file created as issues. |
+| ROO-4 | tech | Ticket tracking | 1 | **[DECISION 2026-10-09]** Tickets are tracked in this file (`docs/SPRINTS.md`); no GitHub Projects/Jira board. Ticket IDs stay in branch names, PR titles and commits. A board can be added later if needed. |
 | ROO-5 | docs | PR + issue templates | 1 | `.github/pull_request_template.md` with the CLAUDE.md PR checklist. Bug and feature issue templates. |
 | ROO-6 | docs | ⚠️ Spec gap: legal & policy pages | 2 | SPEC updated with Privacy Policy, Terms, Shipping Policy, Refund/Return Policy and Contact pages. Razorpay requires these for live activation. Content owner identified. |
 
