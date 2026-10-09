@@ -210,7 +210,7 @@ For every feature, follow this exact flow:
 19. Merge `dev` into `main`.
 20. Merging into `main` must trigger the production CD pipeline.
 21. Production deployment must run only after all required CI checks pass.
-22. Production must be deployed to Vercel.
+22. Production must be deployed to Vercel (web) and Render (API), per `docs/SPEC.md` §4.4.
 23. If the production CI/build/deployment fails, the release must not be considered successfully deployed.
 24. Never bypass or manually skip required CI/CD checks.
 
@@ -278,7 +278,7 @@ Expected flow:
 → `merge → main`
 → `production CD`
 → `production build`
-→ `Vercel`
+→ `Vercel (web) + Render (API)`
 → `production`
 
 Production deployment must use production-specific environment variables and secrets.
@@ -372,6 +372,6 @@ A feature is complete only after the complete workflow succeeds:
 → `merge → main`
 → `production CD`
 → `production build`
-→ `Vercel deployment successful`
+→ `Vercel + Render deployment successful`
 
 Claude must always report the current stage of this workflow when working on a feature.
