@@ -1,0 +1,20 @@
+// Dependency vulnerability gate (SPRINTS ROO-16, SPEC §9). Run: npm run audit:deps
+// CI fails on any high or critical advisory that is not in the allowlist below.
+// Allowlist rules: only advisories with no safe fix that are outside the runtime path.
+// Each entry needs a reason and a review date. Remove it as soon as Dependabot brings a fix.
+{
+  "$schema": "https://github.com/IBM/audit-ci/raw/main/docs/schema.json",
+  "high": true,
+  "report-type": "summary",
+  "allowlist": [
+    // braces (via shadcn CLI → fast-glob). Build-time only; the shipped web app is static files.
+    // Only "fix" is downgrading shadcn to 1.0.0 (breaking). Review by 2026-11-09.
+    "GHSA-vfj7-8cjw-p6xm",
+    // deepmerge-ts (via prisma CLI → @prisma/config). CLI only, not in the API runtime.
+    // Fixed in Prisma 8 (still RC). Review by 2026-11-09.
+    "GHSA-ggr8-5vv4-36mx",
+    // mysql2 (via prisma CLI). We use PostgreSQL; mysql2 is never loaded.
+    // Fixed in Prisma 8 (still RC). Review by 2026-11-09.
+    "GHSA-3f6p-5ww8-9rcr",
+  ],
+}

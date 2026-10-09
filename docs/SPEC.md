@@ -181,7 +181,7 @@ Any other transition returns `409 INVALID_STATUS_TRANSITION`.
 |---|---|---|
 | Local dev | Docker Compose: Postgres + API + web | — |
 | Source control | Git + GitHub, PR-based workflow | — |
-| CI | GitHub Actions: format check, lint, typecheck, test, build | + Docker image build/push to ECR |
+| CI | GitHub Actions: dependency audit, format check, lint, typecheck, test, build | + Docker image build/push to ECR |
 | Hosting | Web: Vercel (free). API: Render web service (free). See §4.4 | EC2 (first), then ECS Fargate + ALB |
 | Database | Local Postgres in Docker; Neon Postgres (free) for staging and production | RDS PostgreSQL |
 | Images | Local disk in dev | S3 + CloudFront |
@@ -453,12 +453,12 @@ Mobile-first (mobile, tablet, desktop). Semantic HTML, keyboard navigation, visi
 - Razorpay: verify payment signature and webhook signature server-side; validate amount matches order; handle webhooks idempotently; never store card data.
 - Secrets only in environment variables; `.env` is git-ignored; never commit keys.
 - Admin authorization checked on every admin route server-side.
-- Dependency scanning (`npm audit` / Dependabot) in CI.
+- Dependency scanning in CI: `npm run audit:deps` (audit-ci) fails on any high or critical advisory not in `audit-ci.jsonc`. Dependabot (`.github/dependabot.yml`) opens weekly update PRs to `dev` for npm and GitHub Actions.
 
 **Known limitations (recorded per CLAUDE.md):**
 - Rate-limit counters are in process memory: correct for one API instance only. Running several instances needs a shared store (e.g. Redis).
 - `SameSite=Lax` session cookies are only sent if the web app and API are on the **same site** (e.g. `roopaank.in` + `api.roopaank.in`). Hosting them on unrelated domains (e.g. `*.vercel.app` + `*.onrender.com`) would break login. ROO-2 solved this with a Vercel `/api/*` rewrite (§4.4).
-- `npm audit` reports high-severity advisories in Prisma CLI dev tooling (`mysql2`, `deepmerge-ts`). They are not in the API's runtime path (we use PostgreSQL); revisit when Prisma ships a fixed release.
+- Three high-severity advisories are allowlisted in `audit-ci.jsonc` because no safe fix exists and none is in a runtime path: `mysql2` and `deepmerge-ts` in the Prisma CLI (we use PostgreSQL; fixed in Prisma 8, still RC), and `braces` in the shadcn CLI (build-time only). Each entry has a review date; remove it when Dependabot brings the fix.
 
 ---
 
