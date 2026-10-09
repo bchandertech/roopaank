@@ -1,18 +1,11 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "target": "es2023",
     "lib": ["ES2023"],
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "types": ["jest"],
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
-    "skipLibCheck": true,
     "noEmit": true
   },
   "include": ["src"]
