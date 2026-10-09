@@ -13,6 +13,7 @@ D2C artificial/imitation jewellery store. The source of truth is `docs/SPEC.md` 
 - Business logic lives in API services, not React components or route handlers. Validate all input with Zod.
 - Prefer the smallest correct implementation; no premature abstractions.
 - The owner is learning (React now, Next.js and AWS later). Explain the "why" behind production practices briefly when introducing them.
+- Everything written into the project is in English only: code comments, identifiers, commit messages, PR descriptions, docs and test names. This applies even when the owner asks in Hindi or Hinglish; never add Hindi to any project file.
 
 ## Learning Mode
 
