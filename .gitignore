@@ -33,7 +33,14 @@ coverage
 playwright-report
 test-results
 
-# Terraform
+# Terraform (tfvars files often hold secrets)
 .terraform/
 *.tfstate
 *.tfstate.*
+*.tfvars
+
+# Generated Prisma client (rebuilt by `prisma generate` on install)
+apps/api/src/generated/
+
+# Locally stored uploads (product images in dev)
+apps/api/uploads/

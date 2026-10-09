@@ -27,6 +27,7 @@ The owner's main goal is not just to ship the site but to gain real, hands-on ex
   4. Help finish and refine it.
 - Claude writes the full code only when the owner explicitly asks for it, after their own attempt.
 - Teach one concept at a time; do not skip steps or bundle many new ideas together.
+- Exception (owner decision, 2026-10-09): the backend (`apps/api`, `packages/shared`) was built by Claude in one go (ROO-100) so the owner can focus on the frontend. The owner will study it afterwards; explain backend code on request. Frontend work follows the attempt-first rule above.
 
 ### `!` shell commands (e.g. `! git status`)
 
