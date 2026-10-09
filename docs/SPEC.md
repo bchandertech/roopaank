@@ -157,7 +157,7 @@ Any other transition returns `409 INVALID_STATUS_TRANSITION`.
 |---|---|
 | Framework | React 19 + Vite + TypeScript |
 | Routing | React Router |
-| Styling | Tailwind CSS + shadcn/ui |
+| Styling | Tailwind CSS v4 (Vite plugin) + shadcn/ui (`base-nova` style, Base UI primitives, Lucide icons). Import alias `@/*` → `src/*`. **[DECISION 2026-10-09]** Base UI chosen over Radix/React Aria: shadcn's current default and actively maintained. |
 | Server state | TanStack Query (React Query) |
 | Client state | Redux Toolkit (client/UI state only; cart lives on server; no RTK Query — server state is React Query's job) |
 | Forms | React Hook Form + Zod |
