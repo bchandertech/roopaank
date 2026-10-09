@@ -10,11 +10,16 @@
     "dev:api": "npm run dev -w @roopaank/api",
     "db:up": "docker compose up -d db",
     "lint": "npm run lint --workspaces --if-present",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "build": "npm run build -w @roopaank/shared && npm run build -w @roopaank/api && npm run build -w @roopaank/web",
     "test": "npm run test --workspaces --if-present"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22 <23"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9"
   }
 }

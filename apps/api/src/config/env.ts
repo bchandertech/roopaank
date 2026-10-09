@@ -9,7 +9,10 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65_535).default(4000),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
-  APP_VERSION: z.string().min(1).default(process.env.npm_package_version ?? 'unknown'),
+  APP_VERSION: z
+    .string()
+    .min(1)
+    .default(process.env.npm_package_version ?? 'unknown'),
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/, message: 'Must be a postgres:// URL' }),
   // Normalised to a bare origin ("https://example.com") so it compares equal to the Origin header.
   WEB_ORIGIN: z.url().transform((value) => new URL(value).origin),

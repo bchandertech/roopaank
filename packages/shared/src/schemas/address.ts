@@ -47,7 +47,10 @@ const addressFields = {
   addressLine2: optionalText(200),
   city: z.string().trim().min(2).max(80),
   state: z.enum(INDIAN_STATES, { message: 'Select a valid state' }),
-  postalCode: z.string().trim().regex(/^[1-9]\d{5}$/, 'Enter a valid 6-digit PIN code'),
+  postalCode: z
+    .string()
+    .trim()
+    .regex(/^[1-9]\d{5}$/, 'Enter a valid 6-digit PIN code'),
   isDefault: z.boolean().optional(),
 };
 

@@ -4,7 +4,13 @@ import path from 'node:path';
 import request from 'supertest';
 import { buildTestApp } from '../../../tests/helpers/app.js';
 import { resetDatabase } from '../../../tests/helpers/db.js';
-import { createAdmin, createCategory, createCustomer, createOrder, createProduct } from '../../../tests/helpers/factories.js';
+import {
+  createAdmin,
+  createCategory,
+  createCustomer,
+  createOrder,
+  createProduct,
+} from '../../../tests/helpers/factories.js';
 import { config } from '../../config/env.js';
 
 const { app } = buildTestApp();
@@ -33,18 +39,29 @@ describe('admin categories', () => {
   it('creates with a generated slug, rejects duplicates and deactivates', async () => {
     const { cookie } = await createAdmin();
 
-    const created = await request(app).post('/api/admin/categories').set('Cookie', cookie).send({ name: 'Necklace Sets' });
+    const created = await request(app)
+      .post('/api/admin/categories')
+      .set('Cookie', cookie)
+      .send({ name: 'Necklace Sets' });
     expect(created.status).toBe(201);
     expect(created.body).toMatchObject({ slug: 'necklace-sets', isActive: true, description: '' });
 
-    const duplicate = await request(app).post('/api/admin/categories').set('Cookie', cookie).send({ name: 'Necklace Sets' });
+    const duplicate = await request(app)
+      .post('/api/admin/categories')
+      .set('Cookie', cookie)
+      .send({ name: 'Necklace Sets' });
     expect(duplicate.status).toBe(409);
     expect(duplicate.body.error.code).toBe('SLUG_TAKEN');
 
-    const renamed = await request(app).patch(`/api/admin/categories/${created.body.id}`).set('Cookie', cookie).send({ name: 'Sets' });
+    const renamed = await request(app)
+      .patch(`/api/admin/categories/${created.body.id}`)
+      .set('Cookie', cookie)
+      .send({ name: 'Sets' });
     expect(renamed.body.name).toBe('Sets');
 
-    expect((await request(app).delete(`/api/admin/categories/${created.body.id}`).set('Cookie', cookie)).status).toBe(204);
+    expect((await request(app).delete(`/api/admin/categories/${created.body.id}`).set('Cookie', cookie)).status).toBe(
+      204,
+    );
     expect((await request(app).get('/api/categories')).body).toEqual([]);
     expect((await request(app).get('/api/admin/categories').set('Cookie', cookie)).body[0].isActive).toBe(false);
   });
@@ -54,7 +71,13 @@ describe('admin products', () => {
   it('creates a product with a unique slug and server-side validation', async () => {
     const { cookie } = await createAdmin();
     const category = await createCategory();
-    const base = { name: 'Kundan Jhumka', description: 'Imitation', categoryId: category.id, price: 129_900, material: 'Brass alloy' };
+    const base = {
+      name: 'Kundan Jhumka',
+      description: 'Imitation',
+      categoryId: category.id,
+      price: 129_900,
+      material: 'Brass alloy',
+    };
 
     const first = await request(app).post('/api/admin/products').set('Cookie', cookie).send(base);
     expect(first.status).toBe(201);
@@ -63,7 +86,10 @@ describe('admin products', () => {
     const second = await request(app).post('/api/admin/products').set('Cookie', cookie).send(base);
     expect(second.body.slug).toBe('kundan-jhumka-2');
 
-    const badPrice = await request(app).post('/api/admin/products').set('Cookie', cookie).send({ ...base, compareAtPrice: 100 });
+    const badPrice = await request(app)
+      .post('/api/admin/products')
+      .set('Cookie', cookie)
+      .send({ ...base, compareAtPrice: 100 });
     expect(badPrice.status).toBe(400);
     expect(badPrice.body.error.details.fieldErrors.compareAtPrice).toBeDefined();
 
@@ -79,10 +105,16 @@ describe('admin products', () => {
     const { cookie } = await createAdmin();
     const product = await createProduct({ price: 50_000 });
 
-    const res = await request(app).patch(`/api/admin/products/${product.id}`).set('Cookie', cookie).send({ compareAtPrice: 40_000 });
+    const res = await request(app)
+      .patch(`/api/admin/products/${product.id}`)
+      .set('Cookie', cookie)
+      .send({ compareAtPrice: 40_000 });
     expect(res.status).toBe(400);
 
-    const ok = await request(app).patch(`/api/admin/products/${product.id}`).set('Cookie', cookie).send({ compareAtPrice: 60_000, stockQuantity: 7 });
+    const ok = await request(app)
+      .patch(`/api/admin/products/${product.id}`)
+      .set('Cookie', cookie)
+      .send({ compareAtPrice: 60_000, stockQuantity: 7 });
     expect(ok.body).toMatchObject({ compareAtPrice: 60_000, stockQuantity: 7, discountPercent: 17 });
   });
 
@@ -113,7 +145,11 @@ describe('admin product images', () => {
 
     const first = await upload('Front');
     expect(first.status).toBe(201);
-    expect(first.body).toMatchObject({ altText: 'Front', sortOrder: 0, url: expect.stringMatching(/\/uploads\/products\/[\w-]+\.png$/) });
+    expect(first.body).toMatchObject({
+      altText: 'Front',
+      sortOrder: 0,
+      url: expect.stringMatching(/\/uploads\/products\/[\w-]+\.png$/),
+    });
     expect(existsSync(fileOnDisk(first.body.url))).toBe(true);
     const second = await upload('Side');
     expect(second.body.sortOrder).toBe(1);
@@ -160,7 +196,10 @@ describe('admin product images', () => {
       .post(`/api/admin/products/${product.id}/images`)
       .set('Cookie', cookie)
       .field('altText', 'Big')
-      .attach('image', Buffer.concat([PNG, Buffer.alloc(6 * 1024 * 1024)]), { filename: 'big.png', contentType: 'image/png' });
+      .attach('image', Buffer.concat([PNG, Buffer.alloc(6 * 1024 * 1024)]), {
+        filename: 'big.png',
+        contentType: 'image/png',
+      });
     expect(huge.status).toBe(413);
     expect(huge.body.error.code).toBe('FILE_TOO_LARGE');
   });
@@ -174,7 +213,13 @@ describe('admin customers and dashboard', () => {
 
     const res = await request(app).get('/api/admin/customers').set('Cookie', admin.cookie);
     expect(res.body.total).toBe(1); // admins are not listed
-    expect(res.body.items[0]).toEqual({ id: user.id, name: user.name, email: user.email, createdAt: expect.any(String), orderCount: 1 });
+    expect(res.body.items[0]).toEqual({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      createdAt: expect.any(String),
+      orderCount: 1,
+    });
   });
 
   it('summarises orders and stock', async () => {

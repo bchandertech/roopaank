@@ -34,7 +34,8 @@ function sendWebhook(body: string, signature: string, eventId: string) {
 }
 
 const stockOf = async (id: string) => (await prisma.product.findUniqueOrThrow({ where: { id } })).stockQuantity;
-const orderOf = (id: string) => prisma.order.findUniqueOrThrow({ where: { id }, include: { statusHistory: { orderBy: { createdAt: 'asc' } } } });
+const orderOf = (id: string) =>
+  prisma.order.findUniqueOrThrow({ where: { id }, include: { statusHistory: { orderBy: { createdAt: 'asc' } } } });
 
 describe('POST /api/checkout', () => {
   it('requires login', async () => {
@@ -50,12 +51,36 @@ describe('POST /api/checkout', () => {
       .send({ addressId: address.id, amount: 1, totalAmount: 1, shippingAmount: 0 });
 
     expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ amount: 100_000, currency: 'INR', keyId: 'rzp_test_fake', orderNumber: expect.stringMatching(/^RPK-\d{8}-0001$/) });
+    expect(res.body).toMatchObject({
+      amount: 100_000,
+      currency: 'INR',
+      keyId: 'rzp_test_fake',
+      orderNumber: expect.stringMatching(/^RPK-\d{8}-0001$/),
+    });
 
-    const order = await prisma.order.findUniqueOrThrow({ where: { id: res.body.orderId }, include: { items: true, payments: true } });
-    expect(order).toMatchObject({ status: 'PENDING', paymentStatus: 'CREATED', subtotal: 100_000, shippingAmount: 0, totalAmount: 100_000 });
-    expect(order.items[0]).toMatchObject({ productId: product.id, productName: product.name, quantity: 2, unitPrice: 50_000, totalPrice: 100_000 });
-    expect(order.payments[0]).toMatchObject({ providerOrderId: res.body.razorpayOrderId, amount: 100_000, status: 'CREATED' });
+    const order = await prisma.order.findUniqueOrThrow({
+      where: { id: res.body.orderId },
+      include: { items: true, payments: true },
+    });
+    expect(order).toMatchObject({
+      status: 'PENDING',
+      paymentStatus: 'CREATED',
+      subtotal: 100_000,
+      shippingAmount: 0,
+      totalAmount: 100_000,
+    });
+    expect(order.items[0]).toMatchObject({
+      productId: product.id,
+      productName: product.name,
+      quantity: 2,
+      unitPrice: 50_000,
+      totalPrice: 100_000,
+    });
+    expect(order.payments[0]).toMatchObject({
+      providerOrderId: res.body.razorpayOrderId,
+      amount: 100_000,
+      status: 'CREATED',
+    });
     expect(order.shippingAddress).toMatchObject({ fullName: 'Priya Sharma', postalCode: '560001', country: 'IN' });
     expect(await stockOf(product.id)).toBe(5); // stock is only taken when payment is verified (D8)
   });
@@ -90,7 +115,10 @@ describe('POST /api/checkout', () => {
 
     const res = await request(app).post('/api/checkout').set('Cookie', cookie).send({ addressId: address.id });
     expect(res.status).toBe(409);
-    expect(res.body.error).toMatchObject({ code: 'CART_HAS_ISSUES', details: { items: [{ productId: product.id, available: 1 }] } });
+    expect(res.body.error).toMatchObject({
+      code: 'CART_HAS_ISSUES',
+      details: { items: [{ productId: product.id, available: 1 }] },
+    });
     expect(await prisma.order.count()).toBe(0);
   });
 
@@ -109,7 +137,10 @@ describe('POST /api/payments/verify', () => {
     const { user, cookie, address, product } = await readyToCheckout();
     const session = await checkout(cookie, address.id);
 
-    const res = await request(app).post('/api/payments/verify').set('Cookie', cookie).send(gateway.pay(session.razorpayOrderId));
+    const res = await request(app)
+      .post('/api/payments/verify')
+      .set('Cookie', cookie)
+      .send(gateway.pay(session.razorpayOrderId));
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ id: session.orderId, status: 'CONFIRMED', paymentStatus: 'PAID' });
@@ -168,7 +199,10 @@ describe('POST /api/payments/verify', () => {
     const session = await checkout(cookie, address.id);
     const stranger = await createCustomer();
 
-    const res = await request(app).post('/api/payments/verify').set('Cookie', stranger.cookie).send(gateway.pay(session.razorpayOrderId));
+    const res = await request(app)
+      .post('/api/payments/verify')
+      .set('Cookie', stranger.cookie)
+      .send(gateway.pay(session.razorpayOrderId));
     expect(res.status).toBe(404);
   });
 
@@ -177,7 +211,10 @@ describe('POST /api/payments/verify', () => {
     const session = await checkout(cookie, address.id);
     await prisma.product.update({ where: { id: product.id }, data: { stockQuantity: 1 } }); // someone else bought it
 
-    const res = await request(app).post('/api/payments/verify').set('Cookie', cookie).send(gateway.pay(session.razorpayOrderId));
+    const res = await request(app)
+      .post('/api/payments/verify')
+      .set('Cookie', cookie)
+      .send(gateway.pay(session.razorpayOrderId));
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('CONFIRMED');
     expect((await orderOf(session.orderId)).needsAttention).toBe(true);
@@ -187,7 +224,12 @@ describe('POST /api/payments/verify', () => {
 
 describe('POST /api/payments/webhook', () => {
   it('rejects an invalid signature', async () => {
-    const { body } = gateway.webhook('payment.captured', { id: 'pay_x', order_id: 'order_x', amount: 1, status: 'captured' });
+    const { body } = gateway.webhook('payment.captured', {
+      id: 'pay_x',
+      order_id: 'order_x',
+      amount: 1,
+      status: 'captured',
+    });
     const res = await sendWebhook(body, 'a'.repeat(64), 'evt_1');
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('INVALID_WEBHOOK_SIGNATURE');
@@ -245,10 +287,17 @@ describe('POST /api/payments/webhook', () => {
 
     const retry = await request(app).post(`/api/orders/${session.orderId}/pay`).set('Cookie', cookie);
     expect(retry.status).toBe(200);
-    expect(retry.body).toMatchObject({ orderId: session.orderId, razorpayOrderId: session.razorpayOrderId, amount: session.amount });
+    expect(retry.body).toMatchObject({
+      orderId: session.orderId,
+      razorpayOrderId: session.razorpayOrderId,
+      amount: session.amount,
+    });
     expect((await orderOf(session.orderId)).status).toBe('PENDING');
 
-    const verified = await request(app).post('/api/payments/verify').set('Cookie', cookie).send(gateway.pay(session.razorpayOrderId));
+    const verified = await request(app)
+      .post('/api/payments/verify')
+      .set('Cookie', cookie)
+      .send(gateway.pay(session.razorpayOrderId));
     expect(verified.body.statusHistory.map((e: { status: string }) => e.status)).toEqual([
       'PENDING',
       'PAYMENT_FAILED',

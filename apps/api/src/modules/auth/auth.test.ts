@@ -22,7 +22,13 @@ describe('POST /api/auth/register', () => {
       .send({ name: 'Priya', email: 'Priya@Example.com', password: 'long-enough-pw' });
 
     expect(res.status).toBe(201);
-    expect(res.body).toEqual({ id: expect.any(String), name: 'Priya', email: 'priya@example.com', phone: null, role: 'USER' });
+    expect(res.body).toEqual({
+      id: expect.any(String),
+      name: 'Priya',
+      email: 'priya@example.com',
+      phone: null,
+      role: 'USER',
+    });
     const cookie = cookieFrom(res);
     expect(cookie).toMatch(/HttpOnly/);
     expect(cookie).toMatch(/SameSite=Lax/);
@@ -61,7 +67,9 @@ describe('POST /api/auth/register', () => {
 describe('POST /api/auth/login', () => {
   it('logs in with the right password', async () => {
     const user = await createUser({ email: 'priya@example.com' });
-    const res = await request(app).post('/api/auth/login').send({ email: 'Priya@example.com', password: TEST_PASSWORD });
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'Priya@example.com', password: TEST_PASSWORD });
     expect(res.status).toBe(200);
     expect(res.body.id).toBe(user.id);
     cookieFrom(res);
@@ -69,8 +77,12 @@ describe('POST /api/auth/login', () => {
 
   it('gives the same generic error for a wrong password and an unknown email', async () => {
     await createUser({ email: 'priya@example.com' });
-    const wrongPassword = await request(app).post('/api/auth/login').send({ email: 'priya@example.com', password: 'wrong-password' });
-    const unknownEmail = await request(app).post('/api/auth/login').send({ email: 'nobody@example.com', password: 'wrong-password' });
+    const wrongPassword = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'priya@example.com', password: 'wrong-password' });
+    const unknownEmail = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'nobody@example.com', password: 'wrong-password' });
 
     for (const res of [wrongPassword, unknownEmail]) {
       expect(res.status).toBe(401);
@@ -86,7 +98,8 @@ describe('POST /api/auth/login', () => {
         checkout: { windowMs: 60_000, limit: 2 },
       },
     });
-    const attempt = () => request(limitedApp).post('/api/auth/login').send({ email: 'x@example.com', password: 'guess' });
+    const attempt = () =>
+      request(limitedApp).post('/api/auth/login').send({ email: 'x@example.com', password: 'guess' });
     expect((await attempt()).status).toBe(401);
     expect((await attempt()).status).toBe(401);
     const blocked = await attempt();
@@ -104,7 +117,9 @@ describe('session lifecycle', () => {
 
   it('GET /me returns the logged-in user', async () => {
     const user = await createUser();
-    const res = await request(app).get('/api/auth/me').set('Cookie', await sessionCookie(user.id));
+    const res = await request(app)
+      .get('/api/auth/me')
+      .set('Cookie', await sessionCookie(user.id));
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ id: user.id, email: user.email, role: 'USER' });
     expect(res.body).not.toHaveProperty('passwordHash');

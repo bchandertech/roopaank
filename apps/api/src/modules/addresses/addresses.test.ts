@@ -24,7 +24,10 @@ describe('addresses', () => {
 
   it('creates an address in India, normalising the phone; the first one is the default', async () => {
     const { cookie } = await createCustomer();
-    const res = await request(app).post('/api/addresses').set('Cookie', cookie).send({ ...validAddress, country: 'US' });
+    const res = await request(app)
+      .post('/api/addresses')
+      .set('Cookie', cookie)
+      .send({ ...validAddress, country: 'US' });
 
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ phone: '9876543210', country: 'IN', isDefault: true, addressLine2: null });
@@ -34,7 +37,10 @@ describe('addresses', () => {
     const { user, cookie } = await createCustomer();
     const first = await createAddress(user.id, { isDefault: true });
 
-    const second = await request(app).post('/api/addresses').set('Cookie', cookie).send({ ...validAddress, isDefault: true });
+    const second = await request(app)
+      .post('/api/addresses')
+      .set('Cookie', cookie)
+      .send({ ...validAddress, isDefault: true });
     expect(second.body.isDefault).toBe(true);
     expect((await prisma.address.findUniqueOrThrow({ where: { id: first.id } })).isDefault).toBe(false);
 
@@ -80,7 +86,10 @@ describe('addresses', () => {
     const other = await createCustomer();
     const address = await createAddress(owner.user.id);
 
-    expect((await request(app).patch(`/api/addresses/${address.id}`).set('Cookie', other.cookie).send({ city: 'Pune' })).status).toBe(404);
+    expect(
+      (await request(app).patch(`/api/addresses/${address.id}`).set('Cookie', other.cookie).send({ city: 'Pune' }))
+        .status,
+    ).toBe(404);
     expect((await request(app).delete(`/api/addresses/${address.id}`).set('Cookie', other.cookie)).status).toBe(404);
     expect((await request(app).get('/api/addresses').set('Cookie', other.cookie)).body).toEqual([]);
   });

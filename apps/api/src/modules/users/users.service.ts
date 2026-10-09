@@ -7,10 +7,7 @@ export async function adminListCustomers(query: AdminCustomerListQuery): Promise
   const where: Prisma.UserWhereInput = {
     role: 'USER',
     ...(query.q && {
-      OR: [
-        { name: { contains: query.q, mode: 'insensitive' } },
-        { email: { contains: query.q, mode: 'insensitive' } },
-      ],
+      OR: [{ name: { contains: query.q, mode: 'insensitive' } }, { email: { contains: query.q, mode: 'insensitive' } }],
     }),
   };
   const [total, rows] = await prisma.$transaction([

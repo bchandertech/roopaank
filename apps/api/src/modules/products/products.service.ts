@@ -122,10 +122,7 @@ export async function adminListProducts(query: AdminProductListQuery): Promise<P
     ...(query.categoryId && { categoryId: query.categoryId }),
     ...(query.isActive !== undefined && { isActive: query.isActive }),
     ...(query.q && {
-      OR: [
-        { name: { contains: query.q, mode: 'insensitive' } },
-        { slug: { contains: query.q, mode: 'insensitive' } },
-      ],
+      OR: [{ name: { contains: query.q, mode: 'insensitive' } }, { slug: { contains: query.q, mode: 'insensitive' } }],
     }),
   };
   const [total, rows] = await prisma.$transaction([

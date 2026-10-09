@@ -1,0 +1,14 @@
+# Store and check out text files with LF on every OS, so Windows and the Linux CI
+# runner see identical files (Prettier enforces "endOfLine": "lf").
+* text=auto eol=lf
+
+# Binary files: never touch line endings.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary

@@ -30,7 +30,12 @@ describe('GET /api/products', () => {
     const res = await request(app).get('/api/products');
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ page: 1, limit: 12, total: 1 });
-    expect(res.body.items[0]).toMatchObject({ slug: 'jhumka', price: 129_900, compareAtPrice: 199_900, discountPercent: 35 });
+    expect(res.body.items[0]).toMatchObject({
+      slug: 'jhumka',
+      price: 129_900,
+      compareAtPrice: 199_900,
+      discountPercent: 35,
+    });
   });
 
   it('filters by category, featured and search text', async () => {
@@ -52,7 +57,11 @@ describe('GET /api/products', () => {
 
   it('sorts by price and paginates', async () => {
     const category = await createCategory();
-    for (const [slug, price] of [['a', 30_000], ['b', 10_000], ['c', 20_000]] as const) {
+    for (const [slug, price] of [
+      ['a', 30_000],
+      ['b', 10_000],
+      ['c', 20_000],
+    ] as const) {
       await createProduct({ slug, price, categoryId: category.id });
     }
 
@@ -88,7 +97,11 @@ describe('GET /api/products/:slug', () => {
 
     const res = await request(app).get('/api/products/jhumka');
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ slug: 'jhumka', material: 'Brass alloy, gold-tone plating', image: { url: 'http://img/1.jpg' } });
+    expect(res.body).toMatchObject({
+      slug: 'jhumka',
+      material: 'Brass alloy, gold-tone plating',
+      image: { url: 'http://img/1.jpg' },
+    });
     expect(res.body.images.map((i: { altText: string }) => i.altText)).toEqual(['front', 'side']);
   });
 

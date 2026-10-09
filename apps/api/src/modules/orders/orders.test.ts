@@ -69,12 +69,24 @@ describe('admin orders', () => {
     const order = await createOrder(user.id, { status: 'CONFIRMED' });
 
     for (const status of ['PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED']) {
-      const res = await request(app).patch(`/api/admin/orders/${order.id}/status`).set('Cookie', admin.cookie).send({ status });
+      const res = await request(app)
+        .patch(`/api/admin/orders/${order.id}/status`)
+        .set('Cookie', admin.cookie)
+        .send({ status });
       expect(res.status).toBe(200);
       expect(res.body.status).toBe(status);
     }
-    const history = await prisma.orderStatusHistory.findMany({ where: { orderId: order.id }, orderBy: { createdAt: 'asc' } });
-    expect(history.map((h) => h.status)).toEqual(['CONFIRMED', 'PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED']);
+    const history = await prisma.orderStatusHistory.findMany({
+      where: { orderId: order.id },
+      orderBy: { createdAt: 'asc' },
+    });
+    expect(history.map((h) => h.status)).toEqual([
+      'CONFIRMED',
+      'PROCESSING',
+      'SHIPPED',
+      'OUT_FOR_DELIVERY',
+      'DELIVERED',
+    ]);
   });
 
   it('rejects transitions outside the state machine with 409', async () => {
@@ -83,12 +95,21 @@ describe('admin orders', () => {
     const confirmed = await createOrder(user.id, { status: 'CONFIRMED' });
     const pending = await createOrder(user.id, { status: 'PENDING' });
 
-    const skip = await request(app).patch(`/api/admin/orders/${confirmed.id}/status`).set('Cookie', admin.cookie).send({ status: 'DELIVERED' });
+    const skip = await request(app)
+      .patch(`/api/admin/orders/${confirmed.id}/status`)
+      .set('Cookie', admin.cookie)
+      .send({ status: 'DELIVERED' });
     expect(skip.status).toBe(409);
-    expect(skip.body.error).toMatchObject({ code: 'INVALID_STATUS_TRANSITION', details: { allowed: ['PROCESSING', 'CANCELLED'] } });
+    expect(skip.body.error).toMatchObject({
+      code: 'INVALID_STATUS_TRANSITION',
+      details: { allowed: ['PROCESSING', 'CANCELLED'] },
+    });
 
     // Only a verified payment may confirm an order.
-    const fakePaid = await request(app).patch(`/api/admin/orders/${pending.id}/status`).set('Cookie', admin.cookie).send({ status: 'CONFIRMED' });
+    const fakePaid = await request(app)
+      .patch(`/api/admin/orders/${pending.id}/status`)
+      .set('Cookie', admin.cookie)
+      .send({ status: 'CONFIRMED' });
     expect(fakePaid.status).toBe(409);
   });
 
@@ -98,7 +119,10 @@ describe('admin orders', () => {
     const product = await createProduct({ stockQuantity: 4 });
     const order = await createOrder(user.id, { status: 'PROCESSING', productId: product.id, quantity: 2 });
 
-    const res = await request(app).patch(`/api/admin/orders/${order.id}/status`).set('Cookie', admin.cookie).send({ status: 'CANCELLED' });
+    const res = await request(app)
+      .patch(`/api/admin/orders/${order.id}/status`)
+      .set('Cookie', admin.cookie)
+      .send({ status: 'CANCELLED' });
     expect(res.status).toBe(200);
     expect((await prisma.product.findUniqueOrThrow({ where: { id: product.id } })).stockQuantity).toBe(6);
   });
@@ -108,12 +132,21 @@ describe('admin orders', () => {
     const { user } = await createCustomer();
     const recent = await createOrder(user.id, { status: 'DELIVERED' });
     const old = await createOrder(user.id, { status: 'DELIVERED' });
-    await prisma.orderStatusHistory.updateMany({ where: { orderId: old.id }, data: { createdAt: new Date(Date.now() - 8 * DAY_MS) } });
+    await prisma.orderStatusHistory.updateMany({
+      where: { orderId: old.id },
+      data: { createdAt: new Date(Date.now() - 8 * DAY_MS) },
+    });
 
-    const ok = await request(app).patch(`/api/admin/orders/${recent.id}/status`).set('Cookie', admin.cookie).send({ status: 'RETURN_REQUESTED' });
+    const ok = await request(app)
+      .patch(`/api/admin/orders/${recent.id}/status`)
+      .set('Cookie', admin.cookie)
+      .send({ status: 'RETURN_REQUESTED' });
     expect(ok.status).toBe(200);
 
-    const late = await request(app).patch(`/api/admin/orders/${old.id}/status`).set('Cookie', admin.cookie).send({ status: 'RETURN_REQUESTED' });
+    const late = await request(app)
+      .patch(`/api/admin/orders/${old.id}/status`)
+      .set('Cookie', admin.cookie)
+      .send({ status: 'RETURN_REQUESTED' });
     expect(late.status).toBe(409);
     expect(late.body.error.code).toBe('RETURN_WINDOW_EXPIRED');
   });
@@ -123,7 +156,10 @@ describe('admin orders', () => {
     const { user } = await createCustomer();
     const order = await createOrder(user.id, { status: 'RETURNED' });
 
-    const res = await request(app).patch(`/api/admin/orders/${order.id}/status`).set('Cookie', admin.cookie).send({ status: 'REFUNDED' });
+    const res = await request(app)
+      .patch(`/api/admin/orders/${order.id}/status`)
+      .set('Cookie', admin.cookie)
+      .send({ status: 'REFUNDED' });
     expect(res.body).toMatchObject({ status: 'REFUNDED', paymentStatus: 'REFUNDED' });
     expect(res.body.payments[0].status).toBe('REFUNDED');
   });
@@ -132,7 +168,10 @@ describe('admin orders', () => {
     const admin = await createAdmin();
     const { user } = await createCustomer();
     const order = await createOrder(user.id);
-    const res = await request(app).patch(`/api/admin/orders/${order.id}/status`).set('Cookie', admin.cookie).send({ status: 'TELEPORTED' });
+    const res = await request(app)
+      .patch(`/api/admin/orders/${order.id}/status`)
+      .set('Cookie', admin.cookie)
+      .send({ status: 'TELEPORTED' });
     expect(res.status).toBe(400);
   });
 });

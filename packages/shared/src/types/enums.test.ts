@@ -20,12 +20,9 @@ describe('admin order status transitions', () => {
     expect(ADMIN_ORDER_STATUS_TRANSITIONS).toEqual(expected);
   });
 
-  it.each(ORDER_STATUSES.flatMap((from) => ORDER_STATUSES.map((to) => [from, to] as const)))(
-    '%s → %s',
-    (from, to) => {
-      expect(canAdminTransition(from, to)).toBe(expected[from].includes(to));
-    },
-  );
+  it.each(ORDER_STATUSES.flatMap((from) => ORDER_STATUSES.map((to) => [from, to] as const)))('%s → %s', (from, to) => {
+    expect(canAdminTransition(from, to)).toBe(expected[from].includes(to));
+  });
 
   it('never lets an admin confirm or fail a payment', () => {
     expect(canAdminTransition('PENDING', 'CONFIRMED')).toBe(false);

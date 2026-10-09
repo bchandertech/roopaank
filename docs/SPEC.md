@@ -161,7 +161,7 @@ Any other transition returns `409 INVALID_STATUS_TRANSITION`.
 | Server state | TanStack Query (React Query) |
 | Client state | Redux Toolkit (client/UI state only; cart lives on server; no RTK Query — server state is React Query's job) |
 | Forms | React Hook Form + Zod |
-| Lint | oxlint |
+| Lint / format | oxlint + Prettier (single quotes, width 120; Markdown excluded). `.editorconfig`, LF line endings via `.gitattributes`, Node 22 pinned in `.nvmrc` + `engines` |
 
 ### 4.2 Backend — `apps/api` **[DECISION]**
 
@@ -181,7 +181,7 @@ Any other transition returns `409 INVALID_STATUS_TRANSITION`.
 |---|---|---|
 | Local dev | Docker Compose: Postgres + API + web | — |
 | Source control | Git + GitHub, PR-based workflow | — |
-| CI | GitHub Actions: lint, typecheck, test, build | + Docker image build/push to ECR |
+| CI | GitHub Actions: format check, lint, typecheck, test, build | + Docker image build/push to ECR |
 | Hosting | — | EC2 (first), then ECS Fargate + ALB |
 | Database | Local Postgres in Docker | RDS PostgreSQL |
 | Images | Local disk in dev | S3 + CloudFront |
@@ -469,7 +469,7 @@ Mobile-first (mobile, tablet, desktop). Semantic HTML, keyboard navigation, visi
 
 - **Git:** `main` is always deployable. Work on short-lived branches named per `CLAUDE.md` (`feature/Roopaank-ROO-123-title`, `fix/Roopaank-ROO-145-title`). Merge via Pull Request only.
 - **Commits:** small and descriptive (Conventional Commits style: `feat:`, `fix:`, `chore:`, `docs:`, `test:`).
-- **CI (GitHub Actions) on every PR:** install → lint → typecheck → unit/integration tests → build.
+- **CI (GitHub Actions) on every PR:** install → format check → lint → typecheck → unit/integration tests → build.
 - **Database:** every schema change is a Prisma migration in the same PR as the code that needs it.
 - **Docker:** `docker compose up` starts the full stack locally.
 - **Docs:** this spec is updated in the same PR when behaviour changes.

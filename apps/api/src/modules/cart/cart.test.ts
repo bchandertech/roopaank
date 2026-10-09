@@ -30,9 +30,19 @@ describe('cart', () => {
       .send({ productId: product.id, quantity: 2, price: 1, totalAmount: 1 });
 
     expect(res.status).toBe(200);
-    expect(res.body.items[0]).toMatchObject({ quantity: 2, lineTotal: 100_000, issue: null, product: { price: 50_000 } });
+    expect(res.body.items[0]).toMatchObject({
+      quantity: 2,
+      lineTotal: 100_000,
+      issue: null,
+      product: { price: 50_000 },
+    });
     // ₹1,000 ≥ ₹999, so shipping is free.
-    expect(res.body).toMatchObject({ subtotal: 100_000, shippingAmount: 0, totalAmount: 100_000, amountToFreeShipping: 0 });
+    expect(res.body).toMatchObject({
+      subtotal: 100_000,
+      shippingAmount: 0,
+      totalAmount: 100_000,
+      amountToFreeShipping: 0,
+    });
   });
 
   it('adds the flat shipping fee below ₹999 and merges repeated adds', async () => {
@@ -43,14 +53,23 @@ describe('cart', () => {
     const res = await request(app).post('/api/cart/items').set('Cookie', cookie).send({ productId: product.id });
 
     expect(res.body.items).toHaveLength(1);
-    expect(res.body).toMatchObject({ itemCount: 2, subtotal: 60_000, shippingAmount: 7_900, totalAmount: 67_900, amountToFreeShipping: 39_900 });
+    expect(res.body).toMatchObject({
+      itemCount: 2,
+      subtotal: 60_000,
+      shippingAmount: 7_900,
+      totalAmount: 67_900,
+      amountToFreeShipping: 39_900,
+    });
   });
 
   it('refuses more than the available stock', async () => {
     const { cookie } = await createCustomer();
     const product = await createProduct({ stockQuantity: 2 });
 
-    const res = await request(app).post('/api/cart/items').set('Cookie', cookie).send({ productId: product.id, quantity: 3 });
+    const res = await request(app)
+      .post('/api/cart/items')
+      .set('Cookie', cookie)
+      .send({ productId: product.id, quantity: 3 });
     expect(res.status).toBe(409);
     expect(res.body.error).toMatchObject({ code: 'INSUFFICIENT_STOCK', details: { available: 2 } });
   });
@@ -69,7 +88,10 @@ describe('cart', () => {
     const { cookie } = await createCustomer();
     const product = await createProduct({ stockQuantity: 100 });
     await request(app).post('/api/cart/items').set('Cookie', cookie).send({ productId: product.id, quantity: 10 });
-    const res = await request(app).post('/api/cart/items').set('Cookie', cookie).send({ productId: product.id, quantity: 1 });
+    const res = await request(app)
+      .post('/api/cart/items')
+      .set('Cookie', cookie)
+      .send({ productId: product.id, quantity: 1 });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('QUANTITY_LIMIT_EXCEEDED');
   });

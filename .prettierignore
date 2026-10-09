@@ -1,0 +1,13 @@
+# Generated or third-party output
+node_modules
+dist
+coverage
+playwright-report
+test-results
+package-lock.json
+apps/api/src/generated
+apps/api/prisma/migrations
+apps/api/uploads
+
+# Hand-written docs: Prettier would re-pad every Markdown table on each edit.
+*.md
