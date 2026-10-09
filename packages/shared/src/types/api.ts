@@ -76,10 +76,7 @@ export type CartItemIssue = 'UNAVAILABLE' | 'OUT_OF_STOCK' | 'INSUFFICIENT_STOCK
 export interface CartItem {
   id: string;
   quantity: number;
-  product: Pick<
-    ProductListItem,
-    'id' | 'name' | 'slug' | 'price' | 'compareAtPrice' | 'stockQuantity' | 'image'
-  >;
+  product: Pick<ProductListItem, 'id' | 'name' | 'slug' | 'price' | 'compareAtPrice' | 'stockQuantity' | 'image'>;
   lineTotal: number;
   issue: CartItemIssue | null;
 }

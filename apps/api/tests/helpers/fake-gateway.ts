@@ -30,7 +30,8 @@ export class FakeGateway implements PaymentGateway {
 
   async fetchPayment(paymentId: string) {
     const payment = this.payments.get(paymentId);
-    if (!payment) throw new AppError(502, 'PAYMENT_PROVIDER_ERROR', 'Payment service is unavailable. Please try again.');
+    if (!payment)
+      throw new AppError(502, 'PAYMENT_PROVIDER_ERROR', 'Payment service is unavailable. Please try again.');
     return { id: paymentId, ...payment };
   }
 

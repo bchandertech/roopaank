@@ -64,7 +64,7 @@ export async function reorderProductImages(productId: string, input: ReorderImag
     requested.size === current.length &&
     current.every((image) => requested.has(image.id));
   if (!sameSet) {
-    throw badRequest('INVALID_IMAGE_ORDER', "Send every image id of this product exactly once");
+    throw badRequest('INVALID_IMAGE_ORDER', 'Send every image id of this product exactly once');
   }
   await prisma.$transaction(
     input.imageIds.map((id, index) => prisma.productImage.update({ where: { id }, data: { sortOrder: index } })),

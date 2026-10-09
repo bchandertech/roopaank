@@ -50,7 +50,8 @@ export function createApp({ gateway, storage, rateLimits = defaultRateLimits }: 
         res.setHeader('X-Request-Id', id);
         return id;
       },
-      customLogLevel: (_req, res, err) => (err || res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info'),
+      customLogLevel: (_req, res, err) =>
+        err || res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info',
       autoLogging: { ignore: (req) => req.url === '/api/health' },
     }),
   );

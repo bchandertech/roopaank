@@ -64,7 +64,10 @@ export async function updateOrderStatus(id: string, to: OrderStatus): Promise<Ad
     if (to === 'RETURN_REQUESTED') {
       const deliveredAt = order.statusHistory[0]?.createdAt;
       if (!deliveredAt || Date.now() - deliveredAt.getTime() > RETURN_WINDOW_DAYS * DAY_MS) {
-        throw conflict('RETURN_WINDOW_EXPIRED', `Returns must be requested within ${RETURN_WINDOW_DAYS} days of delivery`);
+        throw conflict(
+          'RETURN_WINDOW_EXPIRED',
+          `Returns must be requested within ${RETURN_WINDOW_DAYS} days of delivery`,
+        );
       }
     }
 

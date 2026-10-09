@@ -9,7 +9,12 @@ export const slugSchema = z
   .max(120)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Use lowercase letters, numbers and single hyphens');
 
-export const emailSchema = z.string().trim().toLowerCase().max(254).pipe(z.email({ message: 'Invalid email' }));
+export const emailSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .max(254)
+  .pipe(z.email({ message: 'Invalid email' }));
 
 /** Indian mobile number. Accepts "+91 98765 43210", "09876543210" etc.; outputs 10 digits. */
 export const phoneSchema = z

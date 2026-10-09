@@ -41,7 +41,8 @@ export async function confirmPayment(tx: Db, paymentId: string, providerPaymentI
   }
 
   const confirmable = order.status === 'PENDING' || order.status === 'PAYMENT_FAILED';
-  if (!confirmable) logger.error({ orderId: order.id, status: order.status }, 'Payment received for an order in an unexpected status');
+  if (!confirmable)
+    logger.error({ orderId: order.id, status: order.status }, 'Payment received for an order in an unexpected status');
 
   await tx.order.update({
     where: { id: order.id },
@@ -62,7 +63,10 @@ export async function confirmPayment(tx: Db, paymentId: string, providerPaymentI
 async function markPaymentFailed(tx: Db, providerOrderId: string): Promise<void> {
   const payment = await tx.payment.findUnique({ where: { providerOrderId } });
   if (!payment) return;
-  const { count } = await tx.payment.updateMany({ where: { id: payment.id, status: 'CREATED' }, data: { status: 'FAILED' } });
+  const { count } = await tx.payment.updateMany({
+    where: { id: payment.id, status: 'CREATED' },
+    data: { status: 'FAILED' },
+  });
   if (count === 0) return;
   const updated = await tx.order.updateMany({
     where: { id: payment.orderId, status: 'PENDING' },

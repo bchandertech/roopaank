@@ -42,7 +42,12 @@ export async function checkout(userId: string, input: CheckoutInput, gateway: Pa
   // Stock is checked here and again, atomically, when payment is verified (D8).
   const problems = items
     .filter((i) => !i.product.isActive || !i.product.category.isActive || i.product.stockQuantity < i.quantity)
-    .map((i) => ({ cartItemId: i.id, productId: i.productId, name: i.product.name, available: i.product.stockQuantity }));
+    .map((i) => ({
+      cartItemId: i.id,
+      productId: i.productId,
+      name: i.product.name,
+      available: i.product.stockQuantity,
+    }));
   if (problems.length > 0) {
     throw conflict('CART_HAS_ISSUES', 'Some items in your cart are unavailable or low on stock', { items: problems });
   }
@@ -54,7 +59,10 @@ export async function checkout(userId: string, input: CheckoutInput, gateway: Pa
   // half-done in our DB. If our write fails afterwards, an unpaid Razorpay order is harmless.
   const providerOrder = await gateway.createOrder({ amount: totals.totalAmount, receipt: orderNumber });
   if (providerOrder.amount !== totals.totalAmount) {
-    logger.error({ orderNumber, expected: totals.totalAmount, got: providerOrder.amount }, 'Razorpay order amount mismatch');
+    logger.error(
+      { orderNumber, expected: totals.totalAmount, got: providerOrder.amount },
+      'Razorpay order amount mismatch',
+    );
     throw new AppError(502, 'PAYMENT_PROVIDER_ERROR', 'Payment service is unavailable. Please try again.');
   }
 

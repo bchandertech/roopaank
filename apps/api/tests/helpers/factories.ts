@@ -39,7 +39,11 @@ export async function createAdmin() {
 export async function createCategory(overrides: { name?: string; slug?: string; isActive?: boolean } = {}) {
   const id = unique();
   return prisma.category.create({
-    data: { name: overrides.name ?? `Category ${id}`, slug: overrides.slug ?? `category-${id}`, isActive: overrides.isActive ?? true },
+    data: {
+      name: overrides.name ?? `Category ${id}`,
+      slug: overrides.slug ?? `category-${id}`,
+      isActive: overrides.isActive ?? true,
+    },
   });
 }
 
@@ -113,7 +117,13 @@ export async function createOrder(
       needsAttention: options.needsAttention ?? false,
       shippingAddress: { fullName: 'Priya Sharma', city: 'Bengaluru' },
       items: {
-        create: { productId: product.id, productName: product.name, quantity, unitPrice: product.price, totalPrice: total },
+        create: {
+          productId: product.id,
+          productName: product.name,
+          quantity,
+          unitPrice: product.price,
+          totalPrice: total,
+        },
       },
       payments: { create: { providerOrderId: `order_${unique()}`, amount: total, status: paid ? 'PAID' : 'CREATED' } },
       statusHistory: { create: { status } },
