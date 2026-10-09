@@ -1,0 +1,26 @@
+# Dependabot: opens PRs for outdated or vulnerable dependencies (SPRINTS ROO-16).
+# PRs target `dev` so they go through CI and staging like any other change.
+version: 2
+updates:
+  # One root lockfile covers every npm workspace.
+  - package-ecosystem: npm
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    # Minor and patch updates arrive as one PR per week instead of one per package.
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: chore
+      include: scope
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci

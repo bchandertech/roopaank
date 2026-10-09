@@ -1,5 +1,5 @@
 # CI: validates every change before it can be merged (CLAUDE.md "CI Pipeline", SPRINTS ROO-13).
-# Steps: install (cached) → format check → lint → typecheck → test (with Postgres) → build.
+# Steps: install (cached) → dependency audit → format check → lint → typecheck → test (with Postgres) → build.
 name: CI
 
 on:
@@ -56,6 +56,10 @@ jobs:
       # `npm ci` installs exactly what package-lock.json says and fails if it is out of sync.
       - name: Install dependencies
         run: npm ci
+
+      # Fails on any new high/critical advisory; known ones are allowlisted with a reason (ROO-16).
+      - name: Dependency audit
+        run: npm run audit:deps
 
       - name: Format check
         run: npm run format:check
