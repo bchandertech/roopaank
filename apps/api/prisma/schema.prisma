@@ -1,0 +1,250 @@
+// Data model — SPEC §6. All money fields are Int paise.
+// Extra DB constraints (CHECKs, partial unique index, order number sequence) live in
+// the migration SQL because Prisma's schema language cannot express them.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PAYMENT_FAILED
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+  RETURN_REQUESTED
+  RETURNED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  CREATED
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  RAZORPAY
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  /// Always stored lowercase (CHECK constraint) so uniqueness is case-insensitive.
+  email        String    @unique
+  phone        String?
+  passwordHash String
+  role         Role      @default(USER)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  sessions     Session[]
+  addresses    Address[]
+  cart         Cart?
+  orders       Order[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  /// SHA-256 of the cookie token; the raw token is never stored.
+  tokenHash String   @unique
+  expiresAt DateTime
+  userAgent String?
+  ip        String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String    @default("")
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+
+  @@index([isActive])
+}
+
+model Product {
+  id               String         @id @default(cuid())
+  name             String
+  slug             String         @unique
+  description      String
+  categoryId       String
+  price            Int
+  compareAtPrice   Int?
+  material         String
+  colour           String?
+  size             String?
+  weightGrams      Int?
+  careInstructions String?
+  stockQuantity    Int            @default(0)
+  isActive         Boolean        @default(true)
+  isFeatured       Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  category         Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  images           ProductImage[]
+  cartItems        CartItem[]
+  orderItems       OrderItem[]
+
+  @@index([categoryId])
+  @@index([isActive, createdAt])
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  url       String
+  altText   String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, sortOrder])
+}
+
+model Address {
+  id           String   @id @default(cuid())
+  userId       String
+  fullName     String
+  phone        String
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  postalCode   String
+  country      String   @default("IN")
+  /// At most one default per user (partial unique index in migration).
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+}
+
+/// No price snapshot: the price is always read fresh from Product.
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  productId String
+  quantity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([cartId, productId])
+  @@index([productId])
+}
+
+model Order {
+  id              String               @id @default(cuid())
+  /// e.g. RPK-20261009-0001 — date (IST) + value from the order_number_seq sequence.
+  orderNumber     String               @unique
+  userId          String
+  status          OrderStatus          @default(PENDING)
+  paymentStatus   PaymentStatus        @default(CREATED)
+  subtotal        Int
+  shippingAmount  Int
+  discountAmount  Int                  @default(0)
+  totalAmount     Int
+  /// Snapshot of the delivery address at checkout time.
+  shippingAddress Json
+  needsAttention  Boolean              @default(false)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+  items           OrderItem[]
+  payments        Payment[]
+  statusHistory   OrderStatusHistory[]
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model OrderItem {
+  id              String   @id @default(cuid())
+  orderId         String
+  productId       String
+  productName     String
+  productImageUrl String?
+  quantity        Int
+  unitPrice       Int
+  totalPrice      Int
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+/// Append-only log of status changes: drives the order timeline and the return window.
+model OrderStatusHistory {
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  createdAt DateTime    @default(now())
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+}
+
+model Payment {
+  id                String          @id @default(cuid())
+  orderId           String
+  provider          PaymentProvider @default(RAZORPAY)
+  providerOrderId   String          @unique
+  providerPaymentId String?         @unique
+  amount            Int
+  status            PaymentStatus   @default(CREATED)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  order             Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+/// Processed webhook deliveries, for idempotency.
+model WebhookEvent {
+  id          String          @id @default(cuid())
+  provider    PaymentProvider
+  eventId     String          @unique
+  type        String
+  processedAt DateTime        @default(now())
+}
