@@ -1,0 +1,10 @@
+{
+  // Jest unit/component tests: same settings as the app, plus Jest and jest-dom types.
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo",
+    "types": ["vite/client", "jest", "@testing-library/jest-dom"]
+  },
+  "include": ["src", "test"],
+  "exclude": []
+}

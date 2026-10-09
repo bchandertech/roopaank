@@ -14,7 +14,9 @@
     "format:check": "prettier --check .",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "build": "npm run build -w @roopaank/shared && npm run build -w @roopaank/api && npm run build -w @roopaank/web",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "test:coverage": "npm run test --workspaces --if-present -- --coverage",
+    "test:e2e": "npm run test:e2e -w @roopaank/web"
   },
   "engines": {
     "node": ">=22 <23"
