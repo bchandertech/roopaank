@@ -92,7 +92,7 @@ Earrings · Necklace · Necklace Sets · Bangles · Rings · Bracelets · Other
 ### 2.3 Shipping **[DECISION]**
 
 - Orders with subtotal **≥ ₹999** → free shipping (matches mockup banner).
-- Orders below ₹999 → flat shipping fee of **₹79** **[OPEN: confirm amount]**.
+- Orders below ₹999 → flat shipping fee of **₹79** (confirmed 2026-10-09).
 - India-only delivery. Postal code must be a valid 6-digit Indian PIN.
 
 ### 2.4 Returns **[DECISION]**
@@ -298,6 +298,11 @@ No price snapshot in cart; price is always read fresh from Product.
 ### Order
 `orderNumber` (unique, human-readable, e.g. `RPK-20261007-0001`) · `userId` · `status` · `paymentStatus` · `subtotal` · `shippingAmount` · `discountAmount` · `totalAmount` · `shippingAddress` (JSON snapshot) · `needsAttention` (bool)
 
+`orderNumber` = `RPK-` + IST date + value from the Postgres sequence `order_number_seq` (zero-padded to 4+ digits). The sequence is global, not reset daily, so numbers are unique under concurrent checkouts.
+
+### OrderStatusHistory
+`orderId` · `status` · `createdAt` — append-only, one row per status change. Drives the customer order timeline (§8.2) and the 7-day return window (measured from the `DELIVERED` row). Added 2026-10-09 (ROO-100).
+
 ### OrderItem
 `orderId` · `productId` · `productName` (snapshot) · `productImageUrl` (snapshot) · `quantity` · `unitPrice` (snapshot) · `totalPrice`
 
@@ -310,7 +315,9 @@ No price snapshot in cart; price is always read fresh from Product.
 ### Data rules
 - Products and categories are soft-deleted (`isActive = false`), never hard-deleted once referenced by orders.
 - Order items keep snapshots so historical orders stay correct after product edits.
-- DB constraints (unique, foreign keys, `CHECK price > 0`, `CHECK stockQuantity >= 0`) are defined in migrations, not only in code.
+- DB constraints (unique, foreign keys, `CHECK price > 0`, `CHECK stockQuantity >= 0`) are defined in migrations, not only in code. Also enforced: `compareAtPrice > price`, lowercase emails, positive quantities, `totalAmount = subtotal + shipping − discount`, `totalPrice = unitPrice × quantity`, and at most one default address per user (partial unique index).
+- Limits: max 10 of one product per cart line; max 20 saved addresses per user; max 10 images per product (JPG/PNG/WebP, ≤ 5 MB, alt text required, type checked from file bytes).
+- Cancelling an order (`CONFIRMED`/`PROCESSING` → `CANCELLED`) returns its items to stock, unless the order is `needsAttention` (stock may not have been taken; admin fixes by hand).
 - Schema changes only via Prisma migrations committed to Git.
 
 ---
@@ -324,7 +331,11 @@ Base path: `/api`. JSON in/out. Auth via session cookie. All inputs validated.
 ```json
 { "error": { "code": "PRODUCT_NOT_FOUND", "message": "Product not found", "details": {} } }
 ```
-Never expose stack traces, SQL errors or secrets. Status codes: 400 validation · 401 not logged in · 403 not allowed · 404 not found · 409 conflict (stock, status transition) · 500 unexpected.
+Never expose stack traces, SQL errors or secrets. Status codes: 400 validation · 401 not logged in · 403 not allowed · 404 not found · 409 conflict (stock, status transition) · 413 too large · 429 rate-limited · 500 unexpected · 502 payment provider unavailable.
+
+Validation errors (`VALIDATION_ERROR`) put per-field messages in `details.fieldErrors`. Every response carries an `X-Request-Id` header (also in the logs) for support/debugging.
+
+**Success responses:** a single resource is returned as the JSON object itself; lists as `{ items, page, limit, total }`; deletes return `204` with no body. Cart mutations return the updated cart. Response types live in `packages/shared/src/types/api.ts`. Money is integer paise; dates are ISO 8601 strings. Requests resolving another user's resource (cart item, address, order) return 404, not 403.
 
 ### 7.2 Auth
 | Method | Path | Notes |
@@ -334,7 +345,7 @@ Never expose stack traces, SQL errors or secrets. Status codes: 400 validation �
 | POST | `/auth/logout` | deletes session |
 | GET | `/auth/me` | current user or 401 |
 
-Login and register are rate-limited.
+Login and register are rate-limited (login: 10 per 15 min per IP + email; register: 5 per hour per IP; checkout: 10 per 10 min per user). Sessions last 30 days (`SESSION_TTL_DAYS`); the cookie is `rpk_session`.
 
 ### 7.3 Catalog (public)
 | Method | Path | Notes |
@@ -357,23 +368,31 @@ Login and register are rate-limited.
 ### 7.6 Checkout & payments (customer)
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/checkout` | `{ addressId }` → validates cart & stock, calculates totals, creates `PENDING` order + Razorpay order → returns `{ orderId, razorpayOrderId, amount, keyId }` |
+| POST | `/checkout` | `{ addressId }` → validates cart & stock, calculates totals, creates `PENDING` order + Razorpay order → returns `{ orderId, orderNumber, razorpayOrderId, amount, currency, keyId }` |
 | POST | `/payments/verify` | `{ razorpayOrderId, razorpayPaymentId, signature }` → verifies HMAC signature, checks amount, marks paid, decrements stock, confirms order. Idempotent. |
 | POST | `/payments/webhook` | Razorpay webhook; verifies webhook signature; idempotent via `WebhookEvent`. Same outcome as verify if the browser never returns. |
 
+Webhook events handled: `payment.captured` / `order.paid` (confirm, as verify) and `payment.failed` (order → `PAYMENT_FAILED`); others are recorded and ignored. Razorpay **auto-capture must be enabled** in the dashboard: verify accepts `captured` and `authorized` payments.
+
 ### 7.7 Orders (customer)
-`GET /orders` (own orders) · `GET /orders/:id` (own order only, else 404)
+`GET /orders` (own orders, `?page&limit`) · `GET /orders/:id` (own order only, else 404; includes items, address snapshot and `statusHistory`)
+
+`POST /orders/:id/pay` — payment retry (ROO-63). For an own `PENDING` or `PAYMENT_FAILED` order: moves `PAYMENT_FAILED → PENDING` and returns the same shape as `/checkout`, reusing the original Razorpay order (so the amount cannot change). Otherwise `409 ORDER_NOT_PAYABLE`.
 
 ### 7.8 Admin (role ADMIN)
 | Method | Path |
 |---|---|
-| GET/POST | `/admin/products` |
-| PATCH/DELETE | `/admin/products/:id` (DELETE = deactivate) |
-| POST | `/admin/products/:id/images` · DELETE `/admin/images/:id` |
+| GET/POST | `/admin/products` (GET: `?page&limit&q&categoryId&isActive`) |
+| GET/PATCH/DELETE | `/admin/products/:id` (DELETE = deactivate; GET includes inactive products) |
+| POST | `/admin/products/:id/images` (multipart: `image` file + `altText`) · DELETE `/admin/images/:id` |
+| PUT | `/admin/products/:id/images/order` (`{ imageIds }` — every image id of the product, in display order) |
 | GET/POST | `/admin/categories` · PATCH/DELETE `/admin/categories/:id` |
-| GET | `/admin/orders` (`?status&page`) · GET `/admin/orders/:id` |
+| GET | `/admin/orders` (`?status&needsAttention&page&limit`) · GET `/admin/orders/:id` |
 | PATCH | `/admin/orders/:id/status` (`{ status }`, transition rules from §3.1) |
-| GET | `/admin/customers` |
+| GET | `/admin/customers` (`?q&page&limit`; name, email, joined, order count only) |
+| GET | `/admin/dashboard` (orders by status, today's paid orders (IST), needs-attention count, active products, low-stock list ≤ 5) |
+
+`GET /admin/products/:id`, the image-order endpoint and `/admin/dashboard` were added 2026-10-09 (ROO-100) because the admin edit form (ROO-49), image reorder (ROO-38) and dashboard (ROO-71) need them.
 
 ---
 
@@ -420,6 +439,11 @@ Mobile-first (mobile, tablet, desktop). Semantic HTML, keyboard navigation, visi
 - Admin authorization checked on every admin route server-side.
 - Dependency scanning (`npm audit` / Dependabot) in CI.
 
+**Known limitations (recorded per CLAUDE.md):**
+- Rate-limit counters are in process memory: correct for one API instance only. Running several instances needs a shared store (e.g. Redis).
+- `SameSite=Lax` session cookies are only sent if the web app and API are on the **same site** (e.g. `roopaank.in` + `api.roopaank.in`). Hosting them on unrelated domains (e.g. `*.vercel.app` + `*.onrender.com`) would break login — ROO-2 must pick hosting/domains with this in mind.
+- `npm audit` reports high-severity advisories in Prisma CLI dev tooling (`mysql2`, `deepmerge-ts`). They are not in the API's runtime path (we use PostgreSQL); revisit when Prisma ships a fixed release.
+
 ---
 
 ## 10. Testing
@@ -443,7 +467,7 @@ Mobile-first (mobile, tablet, desktop). Semantic HTML, keyboard navigation, visi
 
 ## 11. Engineering workflow (production practice)
 
-- **Git:** `main` is always deployable. Work on short-lived branches (`feat/cart-api`, `fix/price-rounding`). Merge via Pull Request only.
+- **Git:** `main` is always deployable. Work on short-lived branches named per `CLAUDE.md` (`feature/Roopaank-ROO-123-title`, `fix/Roopaank-ROO-145-title`). Merge via Pull Request only.
 - **Commits:** small and descriptive (Conventional Commits style: `feat:`, `fix:`, `chore:`, `docs:`, `test:`).
 - **CI (GitHub Actions) on every PR:** install → lint → typecheck → unit/integration tests → build.
 - **Database:** every schema change is a Prisma migration in the same PR as the code that needs it.
@@ -474,15 +498,15 @@ Mobile-first (mobile, tablet, desktop). Semantic HTML, keyboard navigation, visi
 | ID | Decision | Status |
 |---|---|---|
 | D1 | Build 1 is React (Vite) SPA; Next.js rebuild later | ✅ Confirmed by owner (2026-10-07) |
-| D2 | Backend: Express + Prisma + PostgreSQL in `apps/api` | Proposed |
-| D3 | Monorepo with npm workspaces (`apps/web`, `apps/api`, `packages/shared`) | Proposed |
-| D4 | Auth: own email/password + DB sessions (no third-party auth for Build 1) | Proposed |
-| D5 | Wishlist, ratings/reviews, variants out of MVP; hidden from mockup UI | Proposed |
-| D6 | Shipping: free ≥ ₹999, else flat ₹79 | Proposed — fee amount open |
-| D7 | Login required for cart & checkout (no guest checkout) | Proposed |
-| D8 | Stock decremented at payment verification | Proposed |
-| D9 | No COD in MVP; online payment only | Proposed |
+| D2 | Backend: Express + Prisma + PostgreSQL in `apps/api` | ✅ Confirmed by owner (2026-10-09) |
+| D3 | Monorepo with npm workspaces (`apps/web`, `apps/api`, `packages/shared`) | ✅ Confirmed by owner (2026-10-09) |
+| D4 | Auth: own email/password + DB sessions (no third-party auth for Build 1) | ✅ Confirmed by owner (2026-10-09) |
+| D5 | Wishlist, ratings/reviews, variants out of MVP; hidden from mockup UI | ✅ Confirmed by owner (2026-10-09) |
+| D6 | Shipping: free ≥ ₹999, else flat ₹79 | ✅ Confirmed by owner (2026-10-09) |
+| D7 | Login required for cart & checkout (no guest checkout) | ✅ Confirmed by owner (2026-10-09) |
+| D8 | Stock decremented at payment verification | ✅ Confirmed by owner (2026-10-09) |
+| D9 | No COD in MVP; online payment only | ✅ Confirmed by owner (2026-10-09) |
 | D10 | Local-first development; AWS deployment in Phase 9 | Confirmed (no card until deploy) |
-| D11 | Images: local disk in dev, S3 + CloudFront in production | Proposed |
+| D11 | Images: local disk in dev, S3 + CloudFront in production | ✅ Confirmed by owner (2026-10-09) |
 | D12 | Client state: Redux Toolkit (replaces Zustand). Server state: React Query (TanStack Query) | ✅ Confirmed by owner (2026-10-09) |
 | D13 | Testing: Jest + React Testing Library + Supertest (replaces Vitest); Playwright for E2E | ✅ Confirmed by owner (2026-10-09) |

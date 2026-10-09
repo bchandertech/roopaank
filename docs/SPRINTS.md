@@ -232,6 +232,18 @@
 
 ---
 
+## ROO-100 — Backend API in one go (owner decision, 2026-10-09)
+
+The owner chose to have the whole backend built on one branch so frontend work can start on a finished API; the owner then studies the backend. Branch: `feature/Roopaank-ROO-100-backend-api`.
+
+| ID | Type | Title | Acceptance criteria |
+|---|---|---|---|
+| ROO-100 | tech | Backend API (MVP) | Implements the backend parts of ROO-9 to ROO-11, ROO-25 to ROO-29, ROO-32 to ROO-39, ROO-51 to ROO-53, ROO-56 to ROO-61, ROO-63 (API), ROO-65 to ROO-68, ROO-70 and ROO-71 (API) per SPEC §6–§7 and §9. Integration tests against a real Postgres. Lint, typecheck, tests and build pass. |
+
+Still open from those tickets: CI pipeline (ROO-13), Playwright setup (ROO-12), staging/production deployment (ROO-14/15), Dependabot (ROO-16). Their frontend halves stay in their own tickets.
+
+---
+
 ## Backlog (not in MVP — need a written requirement first)
 
 Wishlist · Reviews/ratings · Product variants · Coupons · Guest checkout · Cash on delivery · Customer self-cancel/return requests · Transactional emails (order confirmation) · Shipping partner integration · Build 2 (Next.js).

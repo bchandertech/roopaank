@@ -30,7 +30,11 @@ This is an npm workspaces monorepo. Run commands from the repo root:
 
 ```bash
 npm install        # installs all workspaces
+npm run db:up      # start local Postgres in Docker (port 5434)
+npm run dev:api    # start the API (see apps/api/README.md for first-time setup)
 npm run dev:web    # start the web app
 npm run lint       # lint all workspaces
-npm run build      # build all workspaces
+npm run typecheck  # type-check all workspaces
+npm test           # run all tests (API tests need the Docker database)
+npm run build      # build shared → api → web
 ```

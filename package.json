@@ -7,8 +7,11 @@
   ],
   "scripts": {
     "dev:web": "npm run dev -w @roopaank/web",
+    "dev:api": "npm run dev -w @roopaank/api",
+    "db:up": "docker compose up -d db",
     "lint": "npm run lint --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build -w @roopaank/shared && npm run build -w @roopaank/api && npm run build -w @roopaank/web",
     "test": "npm run test --workspaces --if-present"
   },
   "engines": {
