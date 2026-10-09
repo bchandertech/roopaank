@@ -1,18 +1,18 @@
-# Runbook: deployments (staging)
+# Runbook: deployments
 
 Hosting decision: `docs/SPEC.md` §4.4 (D14). Pipeline: `.github/workflows/deploy.yml`.
 
 ## How a deploy works
 
-A merge into `dev` triggers the **Deploy** workflow:
+A merge into `dev` deploys to **staging**; a merge into `main` deploys to **production**. Both use the **Deploy** workflow:
 
 1. **CI** runs again on the exact merge commit (`ci.yml`). If it fails, nothing is deployed.
-2. **Migrations**: `prisma migrate deploy` against the staging Neon database.
+2. **Migrations**: `prisma migrate deploy` against that environment's Neon database.
 3. **API**: Render deploy hook, then the workflow waits until `/api/health` reports this commit.
 4. **Web**: Vercel build and deploy, with `/api/*` and `/uploads/*` rewritten to the Render API.
 5. **Smoke test**: `GET /` and `GET /api/health` through the web URL.
 
-Render and Vercel auto-deploys are turned off, so this workflow is the only way code reaches staging.
+Render and Vercel auto-deploys are turned off, so this workflow is the only way code reaches staging or production. Production also waits for a manual approval. To undo a release, see [`rollback.md`](rollback.md).
 
 **Migration rule:** migrations run *before* the new API starts, while the old API is still serving. Every migration must work with the currently running code: add tables/columns first, remove old ones in a later release.
 
@@ -93,6 +93,34 @@ Re-run the latest **Deploy** workflow on `dev` (Actions → Deploy → Re-run), 
 cd apps/api
 DATABASE_URL='<neon direct url>' ADMIN_NAME='...' ADMIN_EMAIL='...' ADMIN_PASSWORD='...' npm run admin:create
 ```
+
+
+## One-time setup (production)
+
+Repeat the staging steps with **separate** resources. Production must never share a database, secret or token with staging.
+
+| Staging | Production |
+|---|---|
+| Neon project `roopaank-staging` | Neon project `roopaank-prod` |
+| Render service `roopaank-api-staging`, branch `dev` | Render service `roopaank-api-prod`, branch `main` |
+| Vercel project `roopaank-staging` | Vercel project `roopaank` |
+| GitHub environment `staging`, branch `dev` | GitHub environment `production`, branch `main` |
+
+Production differences:
+
+- **GitHub environment `production`:** enable **Required reviewers** (add yourself) so every production deploy waits for an explicit approval in the Actions tab. Deployment branches: only `main`.
+- **Razorpay:** keep **test mode** keys until go-live. Live keys only after the SPEC §4.4 shortcut is resolved (custom domain, non-sleeping API).
+- **Never** run `db:seed` or `db:reset` against production. The seed script refuses to run with `NODE_ENV=production`.
+- Create the production admin with `npm run admin:create` and the production **direct** Neon URL in your shell only.
+
+### Releasing to production
+
+1. Staging has the release and QA on staging passed.
+2. Open a PR `dev → main` (title e.g. `Release: ROO-14, ROO-15`). CI must pass; review and merge.
+3. Actions → **Deploy** → approve the `production` job.
+4. Check `https://<prod web>/api/health` shows the merge commit, then run the same manual checks as staging.
+
+If any step fails, production stays on the previous version: migrations run first, and Render/Vercel only switch traffic after a successful build and health check.
 
 ## Verify after the first deploy (open items from SPEC §4.4)
 
