@@ -244,6 +244,16 @@ Still open from those tickets: CI pipeline (ROO-13), Playwright setup (ROO-12), 
 
 ---
 
+## ROO-101 — Claude Code agents and commands (owner decision, 2026-10-09)
+
+Developer tooling, not a product feature. Branch: `feature/Roopaank-ROO-101-claude-agents` (PR #14).
+
+| ID | Type | Title | Acceptance criteria |
+|---|---|---|---|
+| ROO-101 | tech | Claude Code agents, commands and language rule | Read-only `test-runner`, `code-quality-checker` and `code-reviewer` agents and a `test-creator` agent in `.claude/agents/`. `/test-feature` and `/review-feature` commands in `.claude/commands/`. `CLAUDE.md` rule: all project content is written in English only. |
+
+---
+
 ## Backlog (not in MVP — need a written requirement first)
 
 Wishlist · Reviews/ratings · Product variants · Coupons · Guest checkout · Cash on delivery · Customer self-cancel/return requests · Transactional emails (order confirmation) · Shipping partner integration · Build 2 (Next.js).
